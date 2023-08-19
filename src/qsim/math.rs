@@ -1,7 +1,104 @@
+use num_traits::Float;
+use num_traits::One;
 use num_traits::Zero;
-
-use std::ops::AddAssign;
+use std::ops::Add;
 use std::ops::Mul;
+
+pub trait Magnitude {
+    type Output;
+
+    fn magnitude(&self) -> Self::Output;
+}
+
+impl Magnitude for f64 {
+    type Output = f64;
+
+    fn magnitude(&self) -> Self::Output {
+        *self
+    }
+}
+
+impl Magnitude for f32 {
+    type Output = f32;
+
+    fn magnitude(&self) -> Self::Output {
+        *self
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub struct Complex<T>
+where
+    T: Float,
+{
+    real: T,
+    imagin: T,
+}
+
+impl<T: Float> Complex<T> {
+    pub fn new(real: T, imagin: T) -> Self {
+        Self { real, imagin }
+    }
+}
+
+impl Magnitude for Complex<f64> {
+    type Output = f64;
+    fn magnitude(&self) -> Self::Output {
+        (self.real + self.imagin).sqrt()
+    }
+}
+
+impl Add for Complex<f64> {
+    type Output = Self;
+
+    fn add(self, rhs: Complex<f64>) -> Self::Output {
+        Self {
+            real: self.real + rhs.real,
+            imagin: self.imagin + rhs.imagin,
+        }
+    }
+}
+impl Zero for Complex<f64> {
+    fn is_zero(&self) -> bool {
+        self.real == 0.0 && self.imagin == 0.0
+    }
+
+    fn set_zero(&mut self) {
+        *self = Self::zero();
+    }
+
+    fn zero() -> Self {
+        Self {
+            real: 0.0,
+            imagin: 0.0,
+        }
+    }
+}
+
+impl Mul for Complex<f64> {
+    type Output = Self;
+
+    fn mul(self, rhs: Self) -> Self::Output {
+        let a = self.real;
+        let b = self.imagin;
+        let c = rhs.real;
+        let d = rhs.imagin;
+
+        Self {
+            real: a * c - b * d,
+            imagin: a * d + b * c,
+        }
+    }
+}
+
+impl One for Complex<f64> {
+    fn one() -> Self {
+        Complex {
+            real: 1.0,
+            imagin: 0.0,
+        }
+    }
+}
 
 pub fn tensor_vector_vector<T>(u: &[T], v: &[T]) -> Vec<T>
 where
@@ -51,7 +148,7 @@ pub fn get_amount_bits<T>(bits: &[T]) -> usize {
 
 pub fn multiply_matrix_vector<T>(matrix: &Vec<Vec<T>>, vector: &Vec<T>) -> Vec<T>
 where
-    T: Mul<Output = T> + AddAssign + Copy + Zero,
+    T: Mul<Output = T> + Add + Copy + Zero,
 {
     let rows = matrix.len();
     let cols = matrix[0].len();
@@ -66,17 +163,17 @@ where
 
     for i in 0..rows {
         for j in 0..cols {
-            result[i] += matrix[i][j] * vector[j];
+            result[i] = result[i] + (matrix[i][j] * vector[j]);
         }
     }
 
     result
 }
 
-pub fn identity(dim: usize) -> Vec<Vec<f64>> {
-    let mut matrix = vec![vec![0.0; dim]; dim];
+pub fn identity<T: One + Zero + Clone>(dim: usize) -> Vec<Vec<T>> {
+    let mut matrix = vec![vec![T::zero(); dim]; dim];
     for i in 0..dim {
-        matrix[i][i] = 1.0;
+        matrix[i][i] = T::one();
     }
     return matrix;
 }

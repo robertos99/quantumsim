@@ -1,19 +1,25 @@
 use std::vec;
 
-use std::ops::Mul;
-
 use crate::qsim::math::get_amount_bits;
 use crate::qsim::unitarys::Gate;
+use num_traits::One;
+use num_traits::Zero;
+use std::ops::Mul;
+
+use super::math::Magnitude;
 
 pub struct QuantumRegister<T>
 where
-    T: Mul<Output = T> + Copy,
+    T: Mul<Output = T> + Copy + Magnitude + Zero + One,
 {
     bits: Vec<T>,
     gates: Vec<Box<dyn Gate<T>>>,
 }
 
-impl QuantumRegister<f64> {
+impl<T> QuantumRegister<T>
+where
+    T: Mul<Output = T> + Copy + Magnitude<Output = f64> + Zero + One,
+{
     pub fn new(amount_qubits: usize) -> Self {
         // This is simply to prevent me from creating registers that become too large.
         // Can be adjusted as desired.
@@ -23,8 +29,8 @@ impl QuantumRegister<f64> {
             amount_qubits
         );
 
-        let mut init = vec![0_f64; 2_usize.pow(amount_qubits as u32)];
-        init[0] = 1.0;
+        let mut init = vec![T::zero(); 2_usize.pow(amount_qubits as u32)];
+        init[0] = T::one();
         QuantumRegister {
             bits: init,
             gates: vec![],
@@ -32,9 +38,10 @@ impl QuantumRegister<f64> {
     }
 
     pub fn measure(&self, i: usize) -> u8 {
+        // Register is 0 indexed.
         assert!(
             i < get_amount_bits(&self.bits),
-            "i:  {} is too large. The register holds {} Bits indexed 0.",
+            "i: {} is too large. The register holds {} Bits and is indexed 0.",
             i,
             get_amount_bits(&self.bits)
         );
@@ -47,7 +54,7 @@ impl QuantumRegister<f64> {
             // mask amount_qbits(4) - i(0)  = 0000 0100
             if index & 1 << get_amount_bits(&self.bits) - 1 - i != 0 {
                 // sum of square of magnitude
-                prob_1 += value.powi(2);
+                prob_1 += value.magnitude().powi(2);
             }
         }
 
@@ -63,11 +70,12 @@ impl QuantumRegister<f64> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::qsim::math::Complex;
 
     #[test]
     fn test_new() {
         let n = 3; // for example
-        let qr = QuantumRegister::new(n);
+        let qr = QuantumRegister::<f64>::new(n);
         let expected_length = 2_u8.pow(n as u32) as usize;
 
         assert_eq!(qr.bits.len(), expected_length);
@@ -91,7 +99,7 @@ mod test {
     }
 
     #[test]
-    #[should_panic(expected = "i:  3 is too large. The register holds 2 Bits indexed 0.")]
+    #[should_panic(expected = "i: 3 is too large. The register holds 2 Bits and is indexed 0.")]
     fn test_measure_out_of_bounds_assertion() {
         let reg = QuantumRegister {
             bits: vec![1.0 / 2.0f64.sqrt(), 1.0 / 2.0f64.sqrt(), 0.0, 0.0],
@@ -104,6 +112,7 @@ mod test {
 
     #[test]
     fn test_measure_expected_probabilities() {
+        // equivilant to |+0>
         let reg = QuantumRegister {
             bits: vec![1.0 / 2.0f64.sqrt(), 0.0, 1.0 / 2.0f64.sqrt(), 0.0],
             gates: vec![],
