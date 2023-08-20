@@ -108,6 +108,11 @@ impl CNot {
         Self { control, target }
     }
 
+    ///
+    /// function to create a dynamic cnot matrix.
+    /// This is required to react to different sized registers. This also depends on which bit is target and control.
+    /// !!! target and control are 0 indexed !!!
+    /// !!! The 0 index is the left outer bit of the register. This means the |011> the 0 is at index 0 !!!
     fn dynamic_cnot<T: Zero + One + Clone>(&self, register_size: usize) -> Vec<Vec<T>> {
         let control = self.control;
         let target = self.target;
@@ -207,12 +212,12 @@ mod test {
     }
 
     #[test]
-    fn test_dynamic_cnot_f64_3bit() {
-        // first (index 0) control
-        // second (index 1) target
+    fn test_dynamic_cnot_f64_3bit_0_1() {
+        // control: first bit (index 0)
+        // target: second bit (index 1)
         let cnot = CNot::new(0, 1);
-        let a = cnot.dynamic_cnot::<f64>(3);
-        let result = vec![
+        let result = cnot.dynamic_cnot::<f64>(3);
+        let expected = vec![
             vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
             vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
@@ -222,22 +227,60 @@ mod test {
             vec![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
             vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
         ];
-        assert_eq!(result, a);
+        assert_eq!(expected, result);
     }
 
     #[test]
-    fn test_dynamic_cnot_f64_2bit() {
-        // first (index 0) control
-        // second (index 1) target
+    fn test_dynamic_cnot_f64_3bit_0_2() {
+        // control: first bit (index 0)
+        // target: third bit (index 2)
+        let cnot = CNot::new(0, 2);
+        let result = cnot.dynamic_cnot::<f64>(3);
+        let expected = vec![
+            vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+        ];
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_dynamic_cnot_f64_3bit_2_0() {
+        // control: first bit (index 0)
+        // target: third bit (index 2)
+        let cnot = CNot::new(2, 0);
+        let result = cnot.dynamic_cnot::<f64>(3);
+        let expected = vec![
+            vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+            vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            vec![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+            vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+        ];
+        assert_eq!(expected, result);
+    }
+
+    #[test]
+    fn test_dynamic_cnot_f64_2bit_0_1() {
+        // control: first bit (index 0)
+        // target: second bit (index 1)
         let cnot = CNot::new(0, 1);
-        let a = cnot.dynamic_cnot::<f64>(2);
-        let cnot = vec![
+        let result = cnot.dynamic_cnot::<f64>(2);
+        let expected = vec![
             vec![1.0, 0.0, 0.0, 0.0],
             vec![0.0, 1.0, 0.0, 0.0],
             vec![0.0, 0.0, 0.0, 1.0],
             vec![0.0, 0.0, 1.0, 0.0],
         ];
 
-        assert_eq!(cnot, a);
+        assert_eq!(expected, result);
     }
 }
