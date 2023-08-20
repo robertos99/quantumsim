@@ -11,7 +11,7 @@ pub trait Gate<T>
 where
     T: Mul<Output = T> + Copy,
 {
-    fn apply(&self, state_vec: Vec<T>) -> Vec<T>;
+    fn apply(&self, state_vec: &Vec<T>) -> Vec<T>;
 }
 
 pub struct Hadamard<T>
@@ -47,7 +47,7 @@ impl Hadamard<f64> {
 }
 
 impl Gate<f64> for Hadamard<f64> {
-    fn apply(&self, state_vec: Vec<f64>) -> Vec<f64> {
+    fn apply(&self, state_vec: &Vec<f64>) -> Vec<f64> {
         let total_qubits = get_amount_bits(&state_vec);
         assert!(self.apply_register_index < total_qubits, "The apply_register of the Hadamard gate: {} exceeds the amount of bits in the register {}", total_qubits, self.apply_register_index);
 
@@ -88,7 +88,7 @@ impl Hadamard<Complex<f64>> {
 }
 
 impl Gate<Complex<f64>> for Hadamard<Complex<f64>> {
-    fn apply(&self, state_vec: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
+    fn apply(&self, state_vec: &Vec<Complex<f64>>) -> Vec<Complex<f64>> {
         let total_qubits = get_amount_bits(&state_vec);
         assert!(self.apply_register_index < total_qubits, "The apply_register of the Hadamard gate: {} exceeds the amount of bits in the register {}", total_qubits, self.apply_register_index);
 
@@ -151,7 +151,7 @@ impl CNot<f64> {
 }
 
 impl Gate<f64> for CNot<f64> {
-    fn apply(&self, state_vec: Vec<f64>) -> Vec<f64> {
+    fn apply(&self, state_vec: &Vec<f64>) -> Vec<f64> {
         let cnot = self.dynamic_cnot(get_amount_bits(&state_vec));
         multiply_matrix_vector(&cnot, &state_vec)
     }
@@ -206,7 +206,7 @@ impl CNot<Complex<f64>> {
 }
 
 impl Gate<Complex<f64>> for CNot<Complex<f64>> {
-    fn apply(&self, state_vec: Vec<Complex<f64>>) -> Vec<Complex<f64>> {
+    fn apply(&self, state_vec: &Vec<Complex<f64>>) -> Vec<Complex<f64>> {
         let cnot = self.dynamic_cnot(get_amount_bits(&state_vec));
         multiply_matrix_vector(&cnot, &state_vec)
     }
@@ -221,7 +221,7 @@ mod test {
 
         let h = Hadamard::<f64>::new(0);
 
-        let result = h.apply(ket_0);
+        let result = h.apply(&ket_0);
         assert_eq!(result, vec![1.0 / 2.0f64.sqrt(), 1.0 / 2.0f64.sqrt()]);
     }
 
@@ -235,7 +235,7 @@ mod test {
 
         // 1/sqrt(2) |00> + 1/sqrt(2) |11>
         // Bell state / epr-pair
-        let result = h.apply(pre_epr);
+        let result = h.apply(&pre_epr);
 
         print!("{:?}", result);
         assert_eq!(
@@ -252,7 +252,7 @@ mod test {
 
         let h = Hadamard::<Complex<f64>>::new(0);
 
-        let result = h.apply(ket_0);
+        let result = h.apply(&ket_0);
         let a = Complex::new(1.0 / 2.0f64.sqrt(), 0.0);
 
         assert_eq!(result, vec![a, a]);
@@ -270,7 +270,7 @@ mod test {
 
         // 1/sqrt(2) |00> + 1/sqrt(2) |11>
         // Bell state / epr-pair
-        let result = h.apply(pre_epr);
+        let result = h.apply(&pre_epr);
 
         print!("{:?}", result);
         assert_eq!(result, vec![a, z, z, a]);
