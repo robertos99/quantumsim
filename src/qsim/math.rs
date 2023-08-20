@@ -180,7 +180,21 @@ pub fn identity<T: One + Zero + Clone>(dim: usize) -> Vec<Vec<T>> {
 
 #[cfg(test)]
 mod test {
+    use crate::qsim::register;
+
     use super::*;
+    #[test]
+    fn test_complex_mul() {
+        let a = Complex::new(3.0, 4.0);
+        let b = Complex::new(3.0, 4.0);
+
+        let result = a.mul(b);
+
+        let expected = Complex::new(-7.0, 24.0);
+
+        assert_eq!(expected, result);
+    }
+
     #[test]
     fn test_get_amount_bits() {
         let cases = vec![
