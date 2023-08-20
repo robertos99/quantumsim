@@ -142,14 +142,40 @@ mod test {
     }
 
     #[test]
-    fn test_create_bellstate_expected_probabilities() {
-        // equivilant to |+0>
+    fn test_create_bellstate_expected_probabilities_f64() {
         let mut reg = QuantumRegister::<f64>::new(2);
         let hadamard = Hadamard::<f64>::new(0);
-        let cnot = CNot::<f64>::new(0, 1);
+        let cnot = CNot::new(0, 1);
 
         reg.add_gate(Box::new(hadamard));
         reg.add_gate(Box::new(cnot));
+        reg.run();
+        // Check with multiple runs to see if we roughly get expected probabilities
+        // This is a probabilistic test. It might fail occasionally, but over a large number of runs,
+        // the results should converge to the expected values.
+        let num_runs = 10000;
+        let mut ones_count = 0u32;
+        for _ in 0..num_runs {
+            let first_bit = reg.measure(0) as u32;
+            let second_bit = reg.measure(1) as u32;
+            assert!(first_bit == second_bit); // bell state, 1/sqrt(2) * |00> + 1/sqrt(2) * |11>
+
+            ones_count += first_bit;
+        }
+        let approx_prob_1 = ones_count as f64 / num_runs as f64;
+        assert!((approx_prob_1 - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+    }
+
+    #[test]
+    fn test_create_bellstate3_expected_probabilities_f64() {
+        let mut reg = QuantumRegister::<f64>::new(3);
+        let hadamard = Hadamard::<f64>::new(0);
+        let cnot = CNot::new(0, 1);
+        let cnot2 = CNot::new(1, 2);
+
+        reg.add_gate(Box::new(hadamard));
+        reg.add_gate(Box::new(cnot));
+        reg.add_gate(Box::new(cnot2));
         reg.run();
         // Check with multiple runs to see if we roughly get expected probabilities
         // This is a probabilistic test. It might fail occasionally, but over a large number of runs,

@@ -98,116 +98,46 @@ impl Gate<Complex<f64>> for Hadamard<Complex<f64>> {
     }
 }
 
-pub struct CNot<T> {
+pub struct CNot {
     control: usize,
     target: usize,
-    matrix: Vec<Vec<T>>,
 }
 
-impl CNot<f64> {
+impl CNot {
     pub fn new(control: usize, target: usize) -> Self {
-        Self {
-            control,
-            target,
-            matrix: vec![
-                vec![1.0, 0.0, 0.0, 0.0],
-                vec![0.0, 1.0, 0.0, 0.0],
-                vec![0.0, 0.0, 0.0, 1.0],
-                vec![0.0, 0.0, 1.0, 0.0],
-            ],
-        }
+        Self { control, target }
     }
 
-    fn dynamic_cnot(&self, total_qubits: usize) -> Vec<Vec<f64>> {
+    fn dynamic_cnot<T: Zero + One + Clone>(&self, register_size: usize) -> Vec<Vec<T>> {
         let control = self.control;
         let target = self.target;
+        let dim = 1 << register_size; // 2^register_size
+        let mut cnot_matrix = vec![vec![T::zero(); dim]; dim];
 
-        let cnot = self.matrix.clone();
-
-        let id = identity(2);
-
-        let mut result = vec![vec![1.0]];
-
-        let mut i = 0;
-        while i < total_qubits {
-            if i == control {
-                if i + 1 == target {
-                    // Adjusted for 0-indexing
-                    result = tensor_matrix_matrix(&result, &cnot);
-                    i += 2;
-                    continue;
-                } else {
-                    result = tensor_matrix_matrix(&result, &id);
-                }
-            } else if i == target {
-                result = tensor_matrix_matrix(&result, &id);
+        for i in 0..dim {
+            if (i & (1 << register_size - 1 - control)) != 0 {
+                // if control bit is set, flip the target bit
+                cnot_matrix[i][i ^ (1 << register_size - 1 - target)] = T::one();
             } else {
-                result = tensor_matrix_matrix(&result, &id);
+                // if control bit is not set, state remains unchanged
+                cnot_matrix[i][i] = T::one();
             }
-            i += 1;
         }
-        result
+
+        cnot_matrix
     }
 }
 
-impl Gate<f64> for CNot<f64> {
+impl Gate<f64> for CNot {
     fn apply(&self, state_vec: &Vec<f64>) -> Vec<f64> {
-        let cnot = self.dynamic_cnot(get_amount_bits(&state_vec));
+        let cnot = self.dynamic_cnot::<f64>(get_amount_bits(&state_vec));
         multiply_matrix_vector(&cnot, &state_vec)
     }
 }
 
-impl CNot<Complex<f64>> {
-    pub fn new(control: usize, target: usize) -> Self {
-        let o = Complex::one();
-        let z = Complex::zero();
-        Self {
-            control,
-            target,
-            matrix: vec![
-                vec![o, z, z, z],
-                vec![z, o, z, z],
-                vec![z, z, z, o],
-                vec![z, z, o, z],
-            ],
-        }
-    }
-
-    fn dynamic_cnot(&self, total_qubits: usize) -> Vec<Vec<Complex<f64>>> {
-        let control = self.control;
-        let target = self.target;
-
-        let cnot = self.matrix.clone();
-
-        let id = identity(2);
-
-        let mut result = vec![vec![Complex::one()]];
-
-        let mut i = 0;
-        while i < total_qubits {
-            if i == control {
-                if i + 1 == target {
-                    // Adjusted for 0-indexing
-                    result = tensor_matrix_matrix(&result, &cnot);
-                    i += 2;
-                    continue;
-                } else {
-                    result = tensor_matrix_matrix(&result, &id);
-                }
-            } else if i == target {
-                result = tensor_matrix_matrix(&result, &id);
-            } else {
-                result = tensor_matrix_matrix(&result, &id);
-            }
-            i += 1;
-        }
-        result
-    }
-}
-
-impl Gate<Complex<f64>> for CNot<Complex<f64>> {
+impl Gate<Complex<f64>> for CNot {
     fn apply(&self, state_vec: &Vec<Complex<f64>>) -> Vec<Complex<f64>> {
-        let cnot = self.dynamic_cnot(get_amount_bits(&state_vec));
+        let cnot = self.dynamic_cnot::<Complex<f64>>(get_amount_bits(&state_vec));
         multiply_matrix_vector(&cnot, &state_vec)
     }
 }
@@ -231,7 +161,7 @@ mod test {
         // one step before epr pair
         let pre_epr = vec![1.0 / 2.0f64.sqrt(), 0.0, 1.0 / 2.0f64.sqrt(), 0.0];
 
-        let h = CNot::<f64>::new(0, 1);
+        let h = CNot::new(0, 1);
 
         // 1/sqrt(2) |00> + 1/sqrt(2) |11>
         // Bell state / epr-pair
@@ -266,7 +196,7 @@ mod test {
         let z = Complex::zero();
         let pre_epr = vec![a, z, a, z];
 
-        let h = CNot::<Complex<f64>>::new(0, 1);
+        let h = CNot::new(0, 1);
 
         // 1/sqrt(2) |00> + 1/sqrt(2) |11>
         // Bell state / epr-pair
@@ -274,5 +204,40 @@ mod test {
 
         print!("{:?}", result);
         assert_eq!(result, vec![a, z, z, a]);
+    }
+
+    #[test]
+    fn test_dynamic_cnot_f64_3bit() {
+        // first (index 0) control
+        // second (index 1) target
+        let cnot = CNot::new(0, 1);
+        let a = cnot.dynamic_cnot::<f64>(3);
+        let result = vec![
+            vec![1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+            vec![0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+        ];
+        assert_eq!(result, a);
+    }
+
+    #[test]
+    fn test_dynamic_cnot_f64_2bit() {
+        // first (index 0) control
+        // second (index 1) target
+        let cnot = CNot::new(0, 1);
+        let a = cnot.dynamic_cnot::<f64>(2);
+        let cnot = vec![
+            vec![1.0, 0.0, 0.0, 0.0],
+            vec![0.0, 1.0, 0.0, 0.0],
+            vec![0.0, 0.0, 0.0, 1.0],
+            vec![0.0, 0.0, 1.0, 0.0],
+        ];
+
+        assert_eq!(cnot, a);
     }
 }
