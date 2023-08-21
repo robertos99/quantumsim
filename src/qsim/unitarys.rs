@@ -11,6 +11,7 @@ pub trait Gate<T>
 where
     T: Mul<Output = T> + Copy,
 {
+    // TODO make this mutate the vector so that we dont waste memory
     fn apply(&self, state_vec: &Vec<T>) -> Vec<T>;
 }
 
