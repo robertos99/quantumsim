@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::qsim::math::get_amount_bits;
-use crate::qsim::unitarys::Gate;
+use crate::qsim::unitarys::unitarys::Gate;
 use num_traits::One;
 use num_traits::Zero;
 use std::ops::Mul;
@@ -44,8 +44,7 @@ impl QuantumRegister<f64>
 
     pub fn run(&mut self) {
         for gate in &self.gates {
-            let new_state_vec = gate.apply(&self.state_vector);
-            self.state_vector = new_state_vec;
+            gate.apply(&mut self.state_vector);
         }
     }
 
@@ -134,7 +133,7 @@ impl QuantumRegister<f64>
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::qsim::{math::Complex, unitarys::CNot, unitarys::Hadamard};
+    use crate::qsim::{math::Complex, unitarys::unitarys::CNot, unitarys::unitarys::Hadamard};
 
     #[test]
     fn test_new() {
@@ -195,7 +194,10 @@ mod test {
     }
 
     #[test]
-    fn test_create_bellstate_expected_probabilities_f64() {
+    fn test_bellstate_expected_probabilities_f64() {
+        // This test doesnt account for collapse.
+        // It only verifys that the states 0 and 1 are equally like for both bits.
+        // There is a test that verifys that collapse behaves correctly.
         let mut reg = QuantumRegister::<f64>::new(2);
         let hadamard = Hadamard::<f64>::new(0);
         let cnot = CNot::new(0, 1);
@@ -207,20 +209,43 @@ mod test {
         // This is a probabilistic test. It might fail occasionally, but over a large number of runs,
         // the results should converge to the expected values.
         let num_runs = 10000;
-        let mut ones_count = 0u32;
+        let mut ones_count_first_bit = 0u32;
+        let mut ones_count_second_bit = 0u32;
         for _ in 0..num_runs {
             let first_bit = reg.measure_no_collapse(0) as u32;
             let second_bit = reg.measure_no_collapse(1) as u32;
-            assert!(first_bit == second_bit); // bell state, 1/sqrt(2) * |00> + 1/sqrt(2) * |11>
 
-            ones_count += first_bit;
+            ones_count_first_bit += first_bit;
+            ones_count_second_bit += second_bit;
         }
-        //let approx_prob_1 = ones_count as f64 / num_runs as f64;
-        //assert!((approx_prob_1 - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+        let approx_prob_1_first_bit = ones_count_first_bit as f64 / num_runs as f64;
+        let approx_prob_1_second_bit = ones_count_second_bit as f64 / num_runs as f64;
+        assert!((approx_prob_1_first_bit - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+        assert!((approx_prob_1_second_bit - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
     }
 
     #[test]
-    fn test_create_bellstate3_expected_probabilities_f64() {
+    fn test_bellstate_collapsed_measurement_00_or_11() {
+        let mut reg = QuantumRegister::<f64>::new(2);
+        let hadamard = Hadamard::<f64>::new(0);
+        let cnot = CNot::new(0, 1);
+
+        reg.add_gate(Box::new(hadamard));
+        reg.add_gate(Box::new(cnot));
+        reg.run();
+        let num_runs = 10000;
+        for _ in 0..num_runs {
+            let first_bit = reg.measure_with_collapse(0) as u32;
+            let second_bit = reg.measure_with_collapse(1) as u32;
+            assert!(first_bit == second_bit); // bell state, 1/sqrt(2) * |00> + 1/sqrt(2) * |11>
+        }
+    }
+
+    #[test]
+    fn test_ghz_state_expected_probabilities_f64() {
+        // this test doesnt account for collapse right now.
+        // because of that the entangled states ghz state doesnt collapse to 000 or 111, but can also become 001, etc.
+        // to test the correct behaviour of the collapse there is a different test.
         let mut reg = QuantumRegister::<f64>::new(3);
         let hadamard = Hadamard::<f64>::new(0);
         let cnot = CNot::new(0, 1);
@@ -234,15 +259,42 @@ mod test {
         // This is a probabilistic test. It might fail occasionally, but over a large number of runs,
         // the results should converge to the expected values.
         let num_runs = 10000;
-        let mut ones_count = 0u32;
+        let mut ones_count_first_bit = 0u32;
+        let mut ones_count_second_bit = 0u32;
+        let mut ones_count_third_bit = 0u32;
         for _ in 0..num_runs {
             let first_bit = reg.measure_no_collapse(0) as u32;
             let second_bit = reg.measure_no_collapse(1) as u32;
-            assert!(first_bit == second_bit); // bell state, 1/sqrt(2) * |00> + 1/sqrt(2) * |11>
+            let third_bit = reg.measure_no_collapse(1) as u32;
 
-            ones_count += first_bit;
+            ones_count_first_bit += first_bit;
+            ones_count_second_bit += second_bit;
+            ones_count_third_bit += third_bit;
         }
-        let approx_prob_1 = ones_count as f64 / num_runs as f64;
-        assert!((approx_prob_1 - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+        let approx_prob_1_first_bit = ones_count_first_bit as f64 / num_runs as f64;
+        let approx_prob_1_second_bit = ones_count_second_bit as f64 / num_runs as f64;
+        let approx_prob_1_thrid_bit = ones_count_third_bit as f64 / num_runs as f64;
+        assert!((approx_prob_1_first_bit - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+        assert!((approx_prob_1_second_bit - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+        assert!((approx_prob_1_thrid_bit - 0.5).abs() < 0.05); // Check if it's close to 0.5 within a margin
+    }
+
+    #[test]
+    fn test_ghz_state_collapsed_measurement_000_or_111() {
+        let mut reg = QuantumRegister::<f64>::new(3);
+        let hadamard = Hadamard::<f64>::new(0);
+        let cnot = CNot::new(0, 1);
+        let cnot2 = CNot::new(1, 2);
+
+        reg.add_gate(Box::new(hadamard));
+        reg.add_gate(Box::new(cnot));
+        reg.add_gate(Box::new(cnot2));
+        reg.run();
+        let num_runs = 10000;
+        for _ in 0..num_runs {
+            let first_bit = reg.measure_with_collapse(0) as u32;
+            let second_bit = reg.measure_with_collapse(1) as u32;
+            assert!(first_bit == second_bit);
+        }
     }
 }

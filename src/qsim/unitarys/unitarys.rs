@@ -6,13 +6,13 @@ use num_traits::One;
 use num_traits::Zero;
 use std::ops::Mul;
 
-use super::math::Complex;
+use crate::qsim::math::Complex;
 pub trait Gate<T>
 where
     T: Mul<Output = T> + Copy,
 {
     // TODO make this mutate the vector so that we dont waste memory
-    fn apply(&self, state_vec: &Vec<T>) -> Vec<T>;
+    fn apply(&self, state_vec: &mut Vec<T>);
 }
 
 pub struct Hadamard<T>
@@ -48,13 +48,16 @@ impl Hadamard<f64> {
 }
 
 impl Gate<f64> for Hadamard<f64> {
-    fn apply(&self, state_vec: &Vec<f64>) -> Vec<f64> {
+    fn apply(&self, state_vec: &mut Vec<f64>)  {
         let total_qubits = get_amount_bits(&state_vec);
         assert!(self.apply_register_index < total_qubits, "The apply_register of the Hadamard gate: {} exceeds the amount of bits in the register {}", total_qubits, self.apply_register_index);
 
         let computed_hadamard: Vec<Vec<f64>> = self.dynamic_hadamard(total_qubits);
         let computed_state_vec = multiply_matrix_vector(&computed_hadamard, &state_vec);
-        computed_state_vec
+        
+        for i in 0..state_vec.len() {
+            state_vec[i] = computed_state_vec[i];
+        }
     }
 }
 
@@ -89,13 +92,15 @@ impl Hadamard<Complex<f64>> {
 }
 
 impl Gate<Complex<f64>> for Hadamard<Complex<f64>> {
-    fn apply(&self, state_vec: &Vec<Complex<f64>>) -> Vec<Complex<f64>> {
+    fn apply(&self, state_vec: &mut Vec<Complex<f64>>){
         let total_qubits = get_amount_bits(&state_vec);
         assert!(self.apply_register_index < total_qubits, "The apply_register of the Hadamard gate: {} exceeds the amount of bits in the register {}", total_qubits, self.apply_register_index);
 
         let computed_hadamard: Vec<Vec<Complex<f64>>> = self.dynamic_hadamard(total_qubits);
         let computed_state_vec = multiply_matrix_vector(&computed_hadamard, &state_vec);
-        computed_state_vec
+        for i in 0..state_vec.len() {
+            state_vec[i] = computed_state_vec[i];
+        }
     }
 }
 
@@ -136,20 +141,26 @@ impl CNot {
 }
 
 impl Gate<f64> for CNot {
-    fn apply(&self, state_vec: &Vec<f64>) -> Vec<f64> {
+    fn apply(&self, state_vec: &mut Vec<f64>) {
         let cnot = self.dynamic_cnot::<f64>(get_amount_bits(&state_vec));
-        multiply_matrix_vector(&cnot, &state_vec)
+        let computed_state_vec =  multiply_matrix_vector(&cnot, &state_vec);
+        for i in 0..state_vec.len() {
+            state_vec[i] = computed_state_vec[i];
+        }
     }
 }
 
 impl Gate<Complex<f64>> for CNot {
-    fn apply(&self, state_vec: &Vec<Complex<f64>>) -> Vec<Complex<f64>> {
+    fn apply(&self, state_vec: &mut Vec<Complex<f64>>){
         let bits_in_register = get_amount_bits(&state_vec);
         assert!(self.control < bits_in_register && self.target < bits_in_register, 
             "CNot control or target bit out of register bound. Register holds {} bits. Control was {}. Target was {}.", 
             bits_in_register, self.control, self.target);
         let cnot = self.dynamic_cnot::<Complex<f64>>(bits_in_register);
-        multiply_matrix_vector(&cnot, &state_vec)
+        let computed_state_vec = multiply_matrix_vector(&cnot, &state_vec);
+        for i in 0..state_vec.len() {
+            state_vec[i] = computed_state_vec[i];
+        }
     }
 }
 
@@ -162,10 +173,6 @@ struct CSwap {
 impl CSwap {
     pub fn new(control: usize, target_1: usize, target_2: usize) -> Self {
         let are_equal = control == target_1 || control == target_2 || target_1 == target_2;
-        assert!(
-            !are_equal,
-            "Control, Target_1 or Target_2 are pointing to the same bit. They are not allowed to be pointing to the same bit."
-        );
 
         Self {
             control,
@@ -206,13 +213,16 @@ impl CSwap {
 }
 
 impl Gate<f64> for CSwap {
-    fn apply(&self, state_vec: &Vec<f64>) -> Vec<f64> {
+    fn apply(&self, state_vec: &mut Vec<f64>) {
         let bits_in_register = get_amount_bits(&state_vec);
-        assert!(self.control < bits_in_register && self.target < bits_in_register, 
+        assert!(self.control < bits_in_register && self.target_1 < bits_in_register && self.target_2 < bits_in_register, 
             "CSwap control or target_1 or target_2 bit out of register bound. Register holds {} bits. Control was {}. Target_1 was {}. Target_2 was {}.", 
             bits_in_register, self.control, self.target_1, self.target_2);
         let cswap = self.dynamic_cswap::<f64>(get_amount_bits(&state_vec));
-        multiply_matrix_vector(&cswap, &state_vec)
+        let computed_state_vec = multiply_matrix_vector(&cswap, &state_vec);
+        for i in 0..state_vec.len() {
+            state_vec[i] = computed_state_vec[i];
+        }
     }
 }
 
@@ -221,29 +231,29 @@ mod test {
     use super::*;
     #[test]
     fn test_hadamard_f64() {
-        let ket_0 = vec![1.0, 0.0];
+        let mut ket_0 = vec![1.0, 0.0];
 
         let h = Hadamard::<f64>::new(0);
 
-        let result = h.apply(&ket_0);
-        assert_eq!(result, vec![1.0 / 2.0f64.sqrt(), 1.0 / 2.0f64.sqrt()]);
+        h.apply(&mut ket_0);
+        assert_eq!(ket_0, vec![1.0 / 2.0f64.sqrt(), 1.0 / 2.0f64.sqrt()]);
     }
 
     #[test]
     fn test_cnot_f64() {
         // |00> and hadamard the first bit -> |+0>
         // one step before epr pair
-        let pre_epr = vec![1.0 / 2.0f64.sqrt(), 0.0, 1.0 / 2.0f64.sqrt(), 0.0];
+        let mut pre_epr = vec![1.0 / 2.0f64.sqrt(), 0.0, 1.0 / 2.0f64.sqrt(), 0.0];
 
         let h = CNot::new(0, 1);
 
         // 1/sqrt(2) |00> + 1/sqrt(2) |11>
         // Bell state / epr-pair
-        let result = h.apply(&pre_epr);
+        h.apply(&mut pre_epr);
 
-        print!("{:?}", result);
+        print!("{:?}", pre_epr);
         assert_eq!(
-            result,
+            pre_epr,
             vec![1.0 / 2.0f64.sqrt(), 0.0, 0.0, 1.0 / 2.0f64.sqrt()]
         );
     }
@@ -252,14 +262,14 @@ mod test {
     fn test_hadamard_complexf64() {
         let o = Complex::one();
         let z = Complex::zero();
-        let ket_0 = vec![o, z];
+        let mut ket_0 = vec![o, z];
 
         let h = Hadamard::<Complex<f64>>::new(0);
 
-        let result = h.apply(&ket_0);
+        let result = h.apply(&mut ket_0);
         let a = Complex::new(1.0 / 2.0f64.sqrt(), 0.0);
 
-        assert_eq!(result, vec![a, a]);
+        assert_eq!(ket_0, vec![a, a]);
     }
 
     #[test]
@@ -268,16 +278,15 @@ mod test {
         // one step before epr pair
         let a = Complex::new(1.0 / 2.0f64.sqrt(), 0.0);
         let z = Complex::zero();
-        let pre_epr = vec![a, z, a, z];
+        let mut pre_epr = vec![a, z, a, z];
 
         let h = CNot::new(0, 1);
 
         // 1/sqrt(2) |00> + 1/sqrt(2) |11>
         // Bell state / epr-pair
-        let result = h.apply(&pre_epr);
+        h.apply(&mut pre_epr);
 
-        print!("{:?}", result);
-        assert_eq!(result, vec![a, z, z, a]);
+        assert_eq!(pre_epr, vec![a, z, z, a]);
     }
 
     #[test]
