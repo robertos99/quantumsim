@@ -1,7 +1,7 @@
 use std::vec;
 
 use crate::qsim::math::get_amount_bits;
-use crate::qsim::unitarys::unitarys::Gate;
+use crate::qsim::unitarys::Gate;
 use num_traits::One;
 use num_traits::Zero;
 use std::ops::Mul;
@@ -133,7 +133,7 @@ impl QuantumRegister<f64>
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::qsim::{math::Complex, unitarys::unitarys::CNot, unitarys::unitarys::Hadamard};
+    use crate::qsim::{math::Complex, unitarys::cnot::CNot, unitarys::hadamard::Hadamard};
 
     #[test]
     fn test_new() {
