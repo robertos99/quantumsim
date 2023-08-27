@@ -1,11 +1,9 @@
 use crate::qsim::math::get_amount_bits;
 use crate::qsim::math::multiply_matrix_vector;
-use crate::qsim::math::tensor_matrix_matrix;
+
 use num_traits::One;
 use num_traits::Zero;
-use std::ops::Mul;
 
-use crate::qsim::math::Complex;
 use crate::qsim::unitarys::Gate;
 
 

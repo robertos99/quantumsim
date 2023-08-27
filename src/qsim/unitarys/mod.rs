@@ -1,5 +1,4 @@
-use std::ops::Mul;
-
+pub mod ccnot;
 pub mod cnot;
 pub mod cswap;
 pub mod hadamard;
