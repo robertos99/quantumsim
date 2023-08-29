@@ -7,27 +7,26 @@ use num_traits::Zero;
 use crate::qsim::unitarys::Gate;
 
 
-struct CSwap {
+pub struct CSwap {
     control: usize,
-    target_1: usize,
-    target_2: usize,
+    swap_1: usize,
+    swap_2: usize,
 }
 
 impl CSwap {
-    pub fn new(control: usize, target_1: usize, target_2: usize) -> Self {
-        let are_equal = control == target_1 || control == target_2 || target_1 == target_2;
+    pub fn new(control: usize, swap_1: usize, swap_2: usize) -> Self {
 
         Self {
             control,
-            target_1,
-            target_2,
+            swap_1,
+            swap_2,
         }
     }
 
     fn dynamic_cswap<T: Zero + One + Clone>(&self, register_size: usize) -> Vec<Vec<T>> {
         let control = self.control;
-        let target_1 = self.target_1;
-        let target_2 = self.target_2;
+        let target_1 = self.swap_1;
+        let target_2 = self.swap_2;
         let dim = 1 << register_size; // 2^register_size
 
         let mut cswap_matrix = vec![vec![T::zero(); dim]; dim]; // create zeroed matrix which we fill in later
@@ -39,7 +38,7 @@ impl CSwap {
 
                 if (tbit_1 == 0 && tbit_2 != 0) || (tbit_2 == 0 && tbit_1 != 0) {
                     let swap_mask = i ^ (1 << register_size - 1 - target_1);
-                    let swap_mask = swap_mask ^ (1 << register_size - 1 - self.target_2);
+                    let swap_mask = swap_mask ^ (1 << register_size - 1 - self.swap_2);
                     cswap_matrix[i][swap_mask] = T::one();
                 } else {
                     // if control bit is not set, state remains unchanged
@@ -58,11 +57,11 @@ impl CSwap {
 impl Gate<f64> for CSwap {
     fn apply(&self, state_vec: &mut Vec<f64>) {
         let bits_in_register = get_amount_bits(&state_vec);
-        assert!(self.control < bits_in_register && self.target_1 < bits_in_register && self.target_2 < bits_in_register, 
-            "CSwap control or target_1 or target_2 bit out of register bound. Register holds {} bits. Control was {}. Target_1 was {}. Target_2 was {}.", 
-            bits_in_register, self.control, self.target_1, self.target_2);
-        let cswap = self.dynamic_cswap::<f64>(get_amount_bits(&state_vec));
-        let computed_state_vec = multiply_matrix_vector(&cswap, &state_vec);
+        assert!(self.control < bits_in_register && self.swap_1 < bits_in_register && self.swap_2 < bits_in_register, 
+            "CSwap control or swap_1 or swap_2 bit out of register bound. Register holds {} bits. Control was {}. Swap_1 was {}. Swap_2 was {}.", 
+            bits_in_register, self.control, self.swap_1, self.swap_2);
+        let cswap = self.dynamic_cswap::<f64>(get_amount_bits(state_vec));
+        let computed_state_vec = multiply_matrix_vector(&cswap, state_vec);
         for i in 0..state_vec.len() {
             state_vec[i] = computed_state_vec[i];
         }
