@@ -25,7 +25,7 @@ impl QuantumRegister<f64>
         // This is simply to prevent me from creating registers that become too large.
         // Can be adjusted as desired.
         assert!(
-            amount_qubits < 8,
+            amount_qubits < 9,
             "Bit index {} too large. Maximum allowed is 8.",
             amount_qubits
         );
