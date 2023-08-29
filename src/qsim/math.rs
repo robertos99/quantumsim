@@ -180,7 +180,6 @@ pub fn identity<T: One + Zero + Clone>(dim: usize) -> Vec<Vec<T>> {
 
 #[cfg(test)]
 mod test {
-    use crate::qsim::register;
 
     use super::*;
     #[test]

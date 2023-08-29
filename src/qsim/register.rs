@@ -133,7 +133,7 @@ impl QuantumRegister<f64>
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::qsim::{math::Complex, unitarys::cnot::CNot, unitarys::hadamard::Hadamard};
+    use crate::qsim::{unitarys::cnot::CNot, unitarys::hadamard::Hadamard};
 
     #[test]
     fn test_new() {
