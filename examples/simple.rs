@@ -1,8 +1,6 @@
-mod qsim;
+use quantumsim::qsim::unitarys::{ccnot::CCNot, cswap::CSwap, hadamard::Hadamard, not::Not};
 
-use qsim::unitarys::{ccnot::CCNot, cswap::CSwap, hadamard::Hadamard, not::Not};
-
-use crate::qsim::register::QuantumRegister;
+use quantumsim::qsim::register::QuantumRegister;
 fn main() {
     // This is a more or less useless "quantum circuit".
     // The idea here is to show a simple circuit that can identify |110> and |011> with 100% probality.
